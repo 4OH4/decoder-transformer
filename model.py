@@ -140,7 +140,7 @@ class TextGenerationModel(nn.Module):
 def create_model(device=None) -> nn.Module:
     if device is None:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model = TextGenerationModel(**model_config).to(device)
+    model = torch.compile(TextGenerationModel(**model_config)).to(device)
     return model
 
 

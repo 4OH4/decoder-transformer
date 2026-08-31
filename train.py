@@ -9,8 +9,10 @@ import tqdm
 from dataset import create_dataset, VOCAB_SIZE
 from model import create_model
 
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 MODEL_FILE_NAME = "textgen_model.pth"
+
+torch.set_float32_matmul_precision('high')
 
 # Training configuration
 train_config = {
@@ -50,7 +52,7 @@ def train_model(model, dataloader, device):
         epoch_loss = 0
 
         progress_bar = tqdm.tqdm(dataloader, desc=f"Epoch: {epoch}/{train_config['n_epochs']}")
-        for x, y in tqdm.tqdm(progress_bar, leave=False):
+        for x, y in progress_bar:
             x = x.to(device)
             y = y.to(device)
 
