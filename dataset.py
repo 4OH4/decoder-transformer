@@ -10,7 +10,6 @@ DATASOURCE = {
     "frankenstein": "https://www.gutenberg.org/ebooks/84.txt.utf-8",
 }
 VOCAB_SIZE = 10000
-BATCH_SIZE = 32
 TOKENIZER_FILENAME = "gutenberg_tokenizer.json"
 
 # Write dataset files to disc, if they don't exist already
@@ -48,16 +47,16 @@ def get_dataset_text():
         all_text.append(preprocess_guttenberg(f"{filename}.txt"))
     return all_text
 
-def get_tokenizer():
+def create_tokenizer() -> tokenizers.Tokenizer:
     # Create Byte-Pair Encoding tokenizer
     tokenizer = tokenizers.Tokenizer(tokenizers.models.BPE())
     tokenizer.pre_tokenizer = tokenizers.pre_tokenizers.ByteLevel(add_prefix_space=True)
     tokenizer.decode = tokenizers.decoders.ByteLevel()
     return tokenizer
 
-def train_tokenizer(dataset, tokenizer=None):
+def train_tokenizer(dataset:list , tokenizer=None) -> tokenizers.Tokenizer:
     if tokenizer is None:
-        tokenizer = get_tokenizer()
+        tokenizer = create_tokenizer()
     trainer = tokenizers.trainers.BpeTrainer(
         vocab_size=VOCAB_SIZE,
         special_tokens = ["[pad]", "[eos]"],
@@ -71,7 +70,11 @@ def train_tokenizer(dataset, tokenizer=None):
     return tokenizer
 
 class GuttenbergDataset(torch.utils.data.Dataset):
-    def __init__(self, text: str, tokenizer, seq_len=512):
+    tokenizer:  tokenizers.Tokenizer
+    seq_len: int
+
+    def __init__(self, text: str, tokenizer: tokenizers.Tokenizer, seq_len=512):
+        self.tokenizer = tokenizer
         self.seq_len = seq_len
         self.encoded = tokenizer.encode(text).ids
 
@@ -84,14 +87,25 @@ class GuttenbergDataset(torch.utils.data.Dataset):
         y = torch.tensor(chunk[1:])
         return x, y
 
+def get_tokenizer(dataset_text: list = None) -> tokenizers.Tokenizer:
+    tokenizer = None
+    if os.path.exists(TOKENIZER_FILENAME):
+        tokenizer = load_tokenizer(TOKENIZER_FILENAME)
+    else:
+        # Train tokenizer (on list data)
+        if dataset_text is not None:
+            tokenizer = train_tokenizer(dataset_text)
+    if tokenizer is None:
+        raise Exception("Could not initialise tokenizer: No saved tokenizer found and no training dataset provided.")
+    return tokenizer
+
+def load_tokenizer(filename) -> tokenizers.Tokenizer:
+    return tokenizers.Tokenizer.from_file(TOKENIZER_FILENAME)
+
 def create_dataset() -> GuttenbergDataset:
     dataset_text_list = get_dataset_text()
-    # print(len(dataset_text))
-    # Train tokenizer on list data
-    if os.path.exists(TOKENIZER_FILENAME):
-        tokenizer = tokenizers.Tokenizer.from_file(TOKENIZER_FILENAME)
-    else:
-        tokenizer = train_tokenizer(dataset_text_list)
+    # print(len(dataset_text))    
+    tokenizer = get_tokenizer(dataset_text_list)
     dataset_text_str = "\n".join(dataset_text_list)
     dataset = GuttenbergDataset(dataset_text_str, tokenizer)
     return dataset
