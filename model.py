@@ -146,6 +146,11 @@ def create_model(device=None) -> nn.Module:
     model = torch.compile(TextGenerationModel(**model_config)).to(device)
     return model
 
+def create_causal_mask(seq_len, device):
+    """Create a causal mask for autoregressive attention."""
+    mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), device=device), diagonal=1)
+    return mask
+
 
 if __name__ == "__main__":
     # Exercise create_model

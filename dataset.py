@@ -19,6 +19,7 @@ DATASOURCE = {
     # "war_and_peace": "https://www.gutenberg.org/ebooks/2600.txt.utf-8",
 }
 VOCAB_SIZE = 10000
+SEQ_LEN = 512
 TOKENIZER_FILENAME = "gutenberg_tokenizer.json"
 
 # Write dataset files to disc, if they don't exist already
@@ -82,7 +83,7 @@ class GuttenbergDataset(torch.utils.data.Dataset):
     tokenizer:  tokenizers.Tokenizer
     seq_len: int
 
-    def __init__(self, text: str, tokenizer: tokenizers.Tokenizer, seq_len=512):
+    def __init__(self, text: str, tokenizer: tokenizers.Tokenizer, seq_len=SEQ_LEN):
         self.tokenizer = tokenizer
         self.seq_len = seq_len
         self.encoded = tokenizer.encode(text).ids

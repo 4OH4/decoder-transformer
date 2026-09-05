@@ -9,8 +9,8 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 
-from dataset import create_dataset, VOCAB_SIZE
-from model import create_model, model_config
+from dataset import create_dataset, VOCAB_SIZE, SEQ_LEN
+from model import create_model, model_config, create_causal_mask
 
 BATCH_SIZE = 16
 MODEL_FILE_NAME = "textgen_model.pth"
@@ -27,16 +27,12 @@ train_config = {
     "clip_norm": 6.0,
 }
 
-def create_causal_mask(seq_len, device):
-    """Create a causal mask for autoregressive attention."""
-    mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), device=device), diagonal=1)
-    return mask
-
 
 def train_model(model, dataloader, device):
 
     optimizer = optim.AdamW(model.parameters(), lr=train_config["lr"])
     loss_fn = nn.CrossEntropyLoss(ignore_index=dataset.tokenizer.token_to_id("[pad]"))
+    mask = create_causal_mask(seq_len=SEQ_LEN, device=device)
 
     # Learning rate scheduling
     warmup_scheduler = optim.lr_scheduler.LinearLR(
@@ -62,9 +58,6 @@ def train_model(model, dataloader, device):
             start_time = time.time()
             x = x.to(device)
             y = y.to(device)
-
-            # Create causal mask
-            mask = create_causal_mask(x.shape[1], device=device)
 
             # Forward pass
             optimizer.zero_grad()
