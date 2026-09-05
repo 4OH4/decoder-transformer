@@ -35,10 +35,11 @@ class RotaryPositionalEncoding(nn.Module):
         self.register_buffer("sin", sinusoid_inp.sin())
  
     def forward(self, x, seq_len=None):
+        # x is (batch, num_heads, seq_len, head_dim): rotate along the sequence axis
         if seq_len is None:
-            seq_len = x.size(1)
-        cos = self.cos[:seq_len].view(1, seq_len, 1, -1)
-        sin = self.sin[:seq_len].view(1, seq_len, 1, -1)
+            seq_len = x.size(-2)
+        cos = self.cos[:seq_len].view(1, 1, seq_len, -1)
+        sin = self.sin[:seq_len].view(1, 1, seq_len, -1)
         return apply_rotary_pos_emb(x, cos, sin)
 
 
@@ -63,11 +64,13 @@ class GQA(nn.Module):
         self.num_heads = num_heads
         self.num_kv_heads = num_kv_heads or num_heads
         self.head_dim = hidden_dim // num_heads
-        self.num_groups = num_heads // num_kv_heads
+        self.num_groups = num_heads // self.num_kv_heads
         self.dropout = dropout
+        # K and V carry only num_kv_heads heads, each shared by num_groups query heads
+        kv_dim = self.num_kv_heads * self.head_dim
         self.q_proj = nn.Linear(hidden_dim, hidden_dim)
-        self.k_proj = nn.Linear(hidden_dim, hidden_dim)
-        self.v_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.k_proj = nn.Linear(hidden_dim, kv_dim)
+        self.v_proj = nn.Linear(hidden_dim, kv_dim)
         self.out_proj = nn.Linear(hidden_dim, hidden_dim)
  
     def forward(self, q, k, v, mask=None, rope=None):
