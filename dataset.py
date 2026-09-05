@@ -22,15 +22,15 @@ VOCAB_SIZE = 10000
 SEQ_LEN = 512
 TOKENIZER_FILENAME = "gutenberg_tokenizer.json"
 
-# Write dataset files to disc, if they don't exist already
-for k,v in DATASOURCE.items():
-    filename = f"{k}.txt"
-    if not os.path.exists(filename):
-        print(f"Downloading: {k}")
-        r = requests.get(v)
-        with open(filename, "wb") as f:
-            f.write(r.content)
-
+def download_data():
+    # Write dataset files to disc, if they don't exist already
+    for k,v in DATASOURCE.items():
+        filename = f"{k}.txt"
+        if not os.path.exists(filename):
+            print(f"Downloading: {k}")
+            r = requests.get(v)
+            with open(filename, "wb") as f:
+                f.write(r.content)
 
 # Read and preprocess text
 def preprocess_guttenberg(filename):
@@ -51,6 +51,7 @@ def preprocess_guttenberg(filename):
     return text
 
 def get_dataset_text():
+    download_data()
     all_text = []
     for filename in DATASOURCE:
         print(f"Processing: {filename}.txt")
