@@ -17,8 +17,6 @@ MODEL_FILE_NAME = "textgen_model.pth"
 
 torch.set_float32_matmul_precision('high')
 
-writer = SummaryWriter(f'runs/{datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")}')
-
 # Training configuration
 train_config = {
     "n_epochs": 2,
@@ -27,10 +25,14 @@ train_config = {
     "clip_norm": 6.0,
 }
 
-# load tokenizer
-tokenizer = load_tokenizer()
 
 def train_model(model, dataloader, device):
+    
+    # load tokenizer
+    tokenizer = load_tokenizer()
+
+    # Set up for logging
+    writer = SummaryWriter(f'runs/{datetime.datetime.now(datetime.UTC).strftime("%Y%m%dT%H%M%SZ")}')
 
     optimizer = optim.AdamW(model.parameters(), lr=train_config["lr"])
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.token_to_id("[pad]"))
