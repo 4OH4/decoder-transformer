@@ -60,7 +60,7 @@ def create_tokenizer() -> tokenizers.Tokenizer:
     # Create Byte-Pair Encoding tokenizer
     tokenizer = tokenizers.Tokenizer(tokenizers.models.BPE())
     tokenizer.pre_tokenizer = tokenizers.pre_tokenizers.ByteLevel(add_prefix_space=True)
-    tokenizer.decode = tokenizers.decoders.ByteLevel()
+    tokenizer.decoder = tokenizers.decoders.ByteLevel()
     return tokenizer
 
 def train_tokenizer(dataset:list , tokenizer=None) -> tokenizers.Tokenizer:

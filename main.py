@@ -29,6 +29,7 @@ def generate_text(model, tokenizer, prompt, max_length=100, temperature=0.7):
             # Stop if we predict the end token
             if next_token[0].item() == tokenizer.token_to_id("[eos]"):
                 break
+    return tokenizer.decode(input_ids[0].tolist())
 
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
