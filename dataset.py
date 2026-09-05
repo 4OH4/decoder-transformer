@@ -81,7 +81,7 @@ def train_tokenizer(dataset:list , tokenizer=None) -> tokenizers.Tokenizer:
     print("Tokenizer saved")
     return tokenizer
 
-class GuttenbergDataset(torch.utils.data.Dataset):
+class TextDataset(torch.utils.data.Dataset):
     tokenizer:  tokenizers.Tokenizer
     seq_len: int
     stride: int
@@ -120,7 +120,7 @@ def load_tokenizer(filename=TOKENIZER_FILENAME) -> tokenizers.Tokenizer:
     else:
         raise Exception("No trained tokenizer found - run train.py")
 
-def create_dataset(val_fraction=VAL_FRACTION) -> tuple[GuttenbergDataset, GuttenbergDataset]:
+def create_dataset(val_fraction=VAL_FRACTION) -> tuple[TextDataset, TextDataset]:
     dataset_text_list = get_dataset_text()
     # print(len(dataset_text))
     tokenizer = get_tokenizer(dataset_text_list)
@@ -133,9 +133,9 @@ def create_dataset(val_fraction=VAL_FRACTION) -> tuple[GuttenbergDataset, Gutten
     train_text = dataset_text_str[:split_idx]
     val_text = dataset_text_str[split_idx:]
 
-    train_dataset = GuttenbergDataset(train_text, tokenizer)
+    train_dataset = TextDataset(train_text, tokenizer)
     # Validation needs no overlap: stride the full window to cover the holdout once
-    val_dataset = GuttenbergDataset(val_text, tokenizer, stride=SEQ_LEN)
+    val_dataset = TextDataset(val_text, tokenizer, stride=SEQ_LEN)
     return train_dataset, val_dataset
 
 if __name__ == "__main__":
