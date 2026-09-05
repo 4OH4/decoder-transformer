@@ -94,7 +94,7 @@ class GQA(nn.Module):
         v = v.contiguous()
         output = F.scaled_dot_product_attention(q, k, v,
                                                 attn_mask=mask,
-                                                dropout_p=self.dropout,
+                                                dropout_p=self.dropout if self.training else 0.0,
                                                 enable_gqa=True)
         output = output.transpose(1, 2).reshape(q_batch_size, q_seq_len, hidden_dim).contiguous()
         output = self.out_proj(output)
