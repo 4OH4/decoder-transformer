@@ -9,7 +9,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 import tqdm
 
-from dataset import create_dataset, VOCAB_SIZE, SEQ_LEN
+from dataset import create_dataset, load_tokenizer, SEQ_LEN
 from model import create_model, model_config, create_causal_mask
 
 BATCH_SIZE = 16
@@ -27,11 +27,13 @@ train_config = {
     "clip_norm": 6.0,
 }
 
+# load tokenizer
+tokenizer = load_tokenizer()
 
 def train_model(model, dataloader, device):
 
     optimizer = optim.AdamW(model.parameters(), lr=train_config["lr"])
-    loss_fn = nn.CrossEntropyLoss(ignore_index=dataset.tokenizer.token_to_id("[pad]"))
+    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.token_to_id("[pad]"))
     mask = create_causal_mask(seq_len=SEQ_LEN, device=device)
 
     # Learning rate scheduling
@@ -116,4 +118,4 @@ if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = create_model(device=device)
 
-    model = train_model(model, dataloader, device)
+    train_model(model, dataloader, device)

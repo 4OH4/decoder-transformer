@@ -109,8 +109,11 @@ def get_tokenizer(dataset_text: list = None) -> tokenizers.Tokenizer:
         raise Exception("Could not initialise tokenizer: No saved tokenizer found and no training dataset provided.")
     return tokenizer
 
-def load_tokenizer(filename) -> tokenizers.Tokenizer:
-    return tokenizers.Tokenizer.from_file(TOKENIZER_FILENAME)
+def load_tokenizer(filename=TOKENIZER_FILENAME) -> tokenizers.Tokenizer:
+    if os.path.exists(filename):
+        return tokenizers.Tokenizer.from_file(filename)
+    else:
+        raise Exception("No trained tokenizer found - run train.py")
 
 def create_dataset() -> GuttenbergDataset:
     dataset_text_list = get_dataset_text()
