@@ -1,5 +1,6 @@
 import datetime
-import os
+import math
+import time
 
 import torch
 import torch.nn as nn
@@ -9,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 import tqdm
 
 from dataset import create_dataset, VOCAB_SIZE
-from model import create_model
+from model import create_model, model_config
 
 BATCH_SIZE = 16
 MODEL_FILE_NAME = "textgen_model.pth"
@@ -51,12 +52,14 @@ def train_model(model, dataloader, device):
     # training loop
     print(f"Training for {train_config['n_epochs']} with {len(dataloader)} steps per epoch")
     best_loss = float('inf')
+    global_step = 0
     for epoch in range(train_config["n_epochs"]):
         model.train()
         epoch_loss = 0
 
         progress_bar = tqdm.tqdm(dataloader, desc=f"Epoch: {epoch}/{train_config['n_epochs']}")
-        for idx, (x, y) in enumerate(progress_bar):
+        for x, y in progress_bar:
+            start_time = time.time()
             x = x.to(device)
             y = y.to(device)
 
@@ -71,14 +74,36 @@ def train_model(model, dataloader, device):
 
             # Backwards pass
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), train_config["clip_norm"], error_if_nonfinite=True)
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), train_config["clip_norm"], error_if_nonfinite=True)
             optimizer.step()
             scheduler.step()
             epoch_loss += loss.item()
 
-            if idx % 100 == 99:
-                writer.add_scalar('training_loss', loss.item(), epoch*len(dataloader) + idx)
+            if global_step % 100 == 99:
+                # Calculate Performance Metrics
+                step_time = time.time() - start_time
+                tokens_in_batch = BATCH_SIZE * model_config["max_seq_len"]
+                throughput = tokens_in_batch / step_time
+                
+                # Calculate Perplexity safely
+                try:
+                    perplexity = math.exp(loss.item())
+                except OverflowError:
+                    perplexity = float('inf')
 
+                writer.add_scalar('Meta/Epoch', epoch, global_step)
+                writer.add_scalar('Loss/Train', loss.item(), global_step)
+                writer.add_scalar("Loss/Perplexity", perplexity, global_step)
+                writer.add_scalar("Optimization/Grad_Norm", grad_norm.item(), global_step)
+                writer.add_scalar("Hardware/Throughput_Tokens_Per_Sec", throughput, global_step)
+
+                # Log GPU memory if CUDA is available
+                if torch.cuda.is_available():
+                    # Convert bytes to Gigabytes
+                    allocated_gb = torch.cuda.memory_allocated() / (1024 ** 3)
+                    writer.add_scalar("Hardware/GPU_Memory_Allocated_GB", allocated_gb, global_step)
+
+            global_step += 1
             # Show loss in tqdm
             progress_bar.set_postfix(loss=loss.item())
 
