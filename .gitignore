@@ -2,6 +2,8 @@
 *.txt
 *_tokenizer.json
 
+# training
+*.pth
 runs/*
 
 # Byte-compiled / optimized / DLL files
