@@ -4,22 +4,23 @@ import torch
 import torch.nn.functional as F
 
 from dataset import load_tokenizer, SEQ_LEN, TOKENIZER_FILENAME
-from model import create_model, create_causal_mask
+from model import create_model, create_causal_mask, model_config
 from train import MODEL_FILE_NAME
 
 
 # Generation function
-def generate_text(model, mask, tokenizer, prompt, max_length=100, temperature=0.7):
+def generate_text(model, device, tokenizer, prompt, max_length=100, temperature=0.7):
     model.eval()
-    device = next(model.parameters()).device
 
     # Encode the prompt
     input_ids = torch.tensor(tokenizer.encode(prompt).ids).unsqueeze(0).to(device)
+    mask = create_causal_mask(seq_len=model_config['max_seq_len'], device=device)
 
     with torch.no_grad():
         for _ in range(max_length):
             # Get model predictions for the next token as the last element of the output
-            outputs = model(input_ids, mask.unsqueeze(0))
+            L = input_ids.size(1)
+            outputs = model(input_ids, mask[:L, :L])
             next_token_logits = outputs[:, -1, :] / temperature
             # Sample from the distribution
             probs = F.softmax(next_token_logits, dim=-1)
@@ -34,7 +35,7 @@ def generate_text(model, mask, tokenizer, prompt, max_length=100, temperature=0.
 if __name__ == "__main__":
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = create_model(device=device)
-    mask = create_causal_mask(seq_len=SEQ_LEN)
+    
     if os.path.exists(MODEL_FILE_NAME):
         model.load_state_dict(torch.load(MODEL_FILE_NAME))
     else:
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     print("\nGenerating sample texts:")
     for prompt in test_prompts:
-        generated = generate_text(model, mask, tokenizer, prompt)
+        generated = generate_text(model, device, tokenizer, prompt)
         print(f"\nPrompt: {prompt}")
         print(f"Generated: {generated}")
         print("-" * 80)
