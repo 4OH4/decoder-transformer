@@ -20,6 +20,7 @@ DATASOURCE = {
 }
 VOCAB_SIZE = 10000
 SEQ_LEN = 512
+VAL_FRACTION = 0.1
 TOKENIZER_FILENAME = "gutenberg_tokenizer.json"
 
 def download_data():
@@ -83,17 +84,20 @@ def train_tokenizer(dataset:list , tokenizer=None) -> tokenizers.Tokenizer:
 class GuttenbergDataset(torch.utils.data.Dataset):
     tokenizer:  tokenizers.Tokenizer
     seq_len: int
+    stride: int
 
-    def __init__(self, text: str, tokenizer: tokenizers.Tokenizer, seq_len=SEQ_LEN):
+    def __init__(self, text: str, tokenizer: tokenizers.Tokenizer, seq_len=SEQ_LEN, stride=1):
         self.tokenizer = tokenizer
         self.seq_len = seq_len
+        self.stride = stride
         self.encoded = tokenizer.encode(text).ids
 
     def __len__(self):
-        return len(self.encoded) - self.seq_len
+        return (len(self.encoded) - self.seq_len - 1) // self.stride + 1
 
     def __getitem__(self, idx):
-        chunk = self.encoded[idx:idx + self.seq_len + 1]
+        start = idx * self.stride
+        chunk = self.encoded[start:start + self.seq_len + 1]
         x = torch.tensor(chunk[:-1])
         y = torch.tensor(chunk[1:])
         return x, y
@@ -116,17 +120,27 @@ def load_tokenizer(filename=TOKENIZER_FILENAME) -> tokenizers.Tokenizer:
     else:
         raise Exception("No trained tokenizer found - run train.py")
 
-def create_dataset() -> GuttenbergDataset:
+def create_dataset(val_fraction=VAL_FRACTION) -> tuple[GuttenbergDataset, GuttenbergDataset]:
     dataset_text_list = get_dataset_text()
-    # print(len(dataset_text))    
+    # print(len(dataset_text))
     tokenizer = get_tokenizer(dataset_text_list)
     dataset_text_str = "\n".join(dataset_text_list)
-    dataset = GuttenbergDataset(dataset_text_str, tokenizer)
-    return dataset
+
+    # Hold out the tail of the corpus for validation. The split is on a contiguous
+    # text range - an index-based split would leak, since windows are stride-1 and
+    # so neighbours share all but one token.
+    split_idx = int(len(dataset_text_str) * (1 - val_fraction))
+    train_text = dataset_text_str[:split_idx]
+    val_text = dataset_text_str[split_idx:]
+
+    train_dataset = GuttenbergDataset(train_text, tokenizer)
+    # Validation needs no overlap: stride the full window to cover the holdout once
+    val_dataset = GuttenbergDataset(val_text, tokenizer, stride=SEQ_LEN)
+    return train_dataset, val_dataset
 
 if __name__ == "__main__":
-    dataset = create_dataset()
-    print(len(dataset))
-    x, y = dataset[0]
+    train_dataset, val_dataset = create_dataset()
+    print(f"Train windows: {len(train_dataset)}; Val windows: {len(val_dataset)}")
+    x, y = train_dataset[0]
     print(x)
     print(y)
